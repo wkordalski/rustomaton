@@ -303,14 +303,6 @@ impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> PartialOrd for DFA<V> 
     }
 }
 
-impl FromStr for DFA<char> {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<DFA<char>, Self::Err> {
-        NFA::from_str(s).map(|x| x.to_dfa())
-    }
-}
-
 /// The multiplication of A and B is A.concatenate(B)
 impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> Mul for DFA<V> {
     type Output = Self;

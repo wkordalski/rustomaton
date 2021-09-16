@@ -2,7 +2,6 @@ use crate::{
     automaton::{Automaton, Buildable},
     dfa::{ToDfa, DFA},
     nfa::{ToNfa, NFA},
-    parser::*,
     utils::*,
 };
 use std::{
@@ -69,46 +68,6 @@ impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> Regex<V> {
     /// A contains B if and only if for each `word` w, if B `accepts` w then A `accepts` w.
     pub fn contains(&self, other: &Regex<V>) -> bool {
         self.to_nfa().contains(&other.to_nfa())
-    }
-}
-
-impl Regex<char> {
-    /// Returns the Regex<char> struct corresponding to the given regex.
-    pub fn parse_with_alphabet(
-        alphabet: HashSet<char>,
-        regex: &str,
-    ) -> Result<Regex<char>, String> {
-        let mut tokens = tokens(regex);
-        if tokens.is_empty() {
-            return Ok(Regex {
-                alphabet,
-                regex: Operations::Empty,
-            });
-        }
-
-        let regex = read_union(&mut tokens)?;
-        if !tokens.is_empty() {
-            Err("Trailing characters.".to_string())
-        } else if let Some(x) = regex.alphabet().into_iter().find(|x| !alphabet.contains(x)) {
-            Err(format!("Letter {} is not in the given alphabet", x))
-        } else {
-            Ok(Regex { alphabet, regex })
-        }
-    }
-}
-
-/// Returns the Regex<char> struct corresponding to the given regex, the alphabet is composed of the letter used in the regexp (without '+', '*', '?', '.', '(', ')', '|', '𝜀').
-impl FromStr for Regex<char> {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Regex<char>, String> {
-        let unauthorized: HashSet<char> = vec!['+', '*', '?', '.', '(', ')', '|', '𝜀']
-            .into_iter()
-            .collect();
-
-        let alphabet: HashSet<char> = s.chars().filter(|x| !unauthorized.contains(&x)).collect();
-
-        Regex::parse_with_alphabet(alphabet, s)
     }
 }
 

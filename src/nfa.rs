@@ -787,14 +787,6 @@ impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> PartialOrd for NFA<V> 
     }
 }
 
-impl FromStr for NFA<char> {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<NFA<char>, Self::Err> {
-        s.parse::<Regex<char>>().map(|x| x.to_nfa())
-    }
-}
-
 /// The multiplication of A and B is A.concatenate(B)
 impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> Mul for NFA<V> {
     type Output = Self;

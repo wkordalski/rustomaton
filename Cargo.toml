@@ -12,8 +12,5 @@ keywords = ["automaton", "dfa", "nfa", "regex"]
 categories = ["algorithms"]
 exclude = ["tests"]
 
-[dependencies]
-logos = "0.9.7"
-
 [dev-dependencies]
-rand = "0.7.3"
+rand = "0.8.4"
