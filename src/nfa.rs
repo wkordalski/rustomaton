@@ -11,7 +11,6 @@ use std::{
     hash::Hash,
     iter::{repeat, FromIterator},
     ops::{Add, BitOr, Bound::*, Mul, Neg, Not, RangeBounds, Sub},
-    str::FromStr,
 };
 
 /// <https://en.wikipedia.org/wiki/Nondeterministic_finite_automaton>
@@ -296,6 +295,115 @@ impl<V: Eq + Hash + Display + Copy + Clone + Debug + Ord> NFA<V> {
             finals,
             transitions,
         })
+    }
+
+    pub fn widening(self, n: usize) -> Self {
+        let languages: Vec<_> = (0..self.transitions.len())
+            .map(|s| self.inputs_accepted_from_state(s, n))
+            .collect();
+
+        struct FindUnion(Vec<usize>);
+        impl FindUnion {
+            fn new(size: usize) -> Self {
+                Self((0..size).collect())
+            }
+            fn find(&mut self, element: usize) -> usize {
+                if self.0[element] == element {
+                    return element;
+                }
+                let res = self.find(self.0[element]);
+                self.0[element] = res;
+                res
+            }
+            fn merge(&mut self, a: usize, b: usize) {
+                let ar = self.find(a);
+                let br = self.find(b);
+                if ar != br {
+                    self.0[usize::max(ar, br)] = usize::min(ar, br);
+                }
+            }
+            /// Returns mapping "element -> connected component" and number of connected components
+            fn get_mapping(&mut self) -> (Vec<usize>, usize) {
+                let mut next_cc = 0;
+                let mut result = Vec::with_capacity(self.0.len());
+                for element in 0..self.0.len() {
+                    if element == self.0[element] {
+                        result.push(next_cc);
+                        next_cc += 1;
+                    } else {
+                        let cc = result[self.find(element)];
+                        result.push(cc);
+                    }
+                }
+                (result, next_cc)
+            }
+        }
+
+        let mut find_union = FindUnion::new(self.transitions.len());
+        for s1 in 0..self.transitions.len() {
+            for s2 in 0..self.transitions.len() {
+                if languages[s1] == languages[s2] {
+                    find_union.merge(s1, s2);
+                }
+            }
+        }
+
+        let (mapping, cc_count) = find_union.get_mapping();
+
+        let initials = self.initials.into_iter().map(|s| mapping[s]).collect();
+        let finals = self.finals.into_iter().map(|s| mapping[s]).collect();
+
+        let mut transitions = vec![HashMap::new(); cc_count];
+        for (s, m) in self.transitions.into_iter().enumerate() {
+            for (l, dd) in m {
+                for d in dd {
+                    transitions[mapping[s]]
+                        .entry(l)
+                        .or_insert_with(Vec::new)
+                        .push(mapping[d]);
+                }
+            }
+        }
+
+        // Remove duplicate transitions
+        for m in &mut transitions {
+            for dd in m.values_mut() {
+                dd.sort_unstable();
+                dd.dedup();
+            }
+        }
+
+        Self {
+            alphabet: self.alphabet,
+            initials,
+            finals,
+            transitions,
+        }
+    }
+
+    fn inputs_accepted_from_state(&self, state: usize, max_length: usize) -> HashSet<Vec<V>> {
+        let mut result = HashSet::new();
+
+        if max_length == 0 {
+            return result;
+        }
+
+        for (letter, targets) in self.transitions[state].iter() {
+            for target in targets {
+                let target_inputs = self.inputs_accepted_from_state(*target, max_length - 1);
+
+                if target_inputs.is_empty() {
+                    result.insert(vec![*letter]);
+                } else {
+                    for mut input in target_inputs {
+                        input.insert(0, *letter);
+                        result.insert(input);
+                    }
+                }
+            }
+        }
+
+        result
     }
 }
 
